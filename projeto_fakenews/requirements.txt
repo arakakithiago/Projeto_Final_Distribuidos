@@ -1,0 +1,3 @@
+# A simulação usa apenas a biblioteca padrão.
+# matplotlib é usado só por graficos.py e visualizar.py (traz o Pillow como dependência).
+matplotlib>=3.8

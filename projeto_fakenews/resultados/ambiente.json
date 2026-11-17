@@ -1,0 +1,12 @@
+{
+  "processador": "AMD Ryzen 7 5700X 8-Core Processor",
+  "nucleos_fisicos": 8,
+  "nucleos_logicos": 16,
+  "memoria_ram_gb": 15.9,
+  "sistema_operacional": "Windows 11 (10.0.26300)",
+  "arquitetura": "AMD64",
+  "linguagem": "Python",
+  "interpretador": "CPython 3.15.2",
+  "gil_ativo": true,
+  "ambiente_execucao": "processos locais; comunicação TCP via loopback (127.0.0.1)"
+}
