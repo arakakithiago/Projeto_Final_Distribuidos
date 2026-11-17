@@ -1,2 +1,4 @@
 repeticao,tamanho,geracoes,tempo_original,tempo_refatorado
-0,256,10,0.3746,0.1181
+0,512,10,1.568,0.4984
+1,512,10,1.5112,0.4817
+2,512,10,1.5123,0.4909

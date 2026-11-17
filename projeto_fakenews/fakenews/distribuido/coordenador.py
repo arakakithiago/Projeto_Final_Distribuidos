@@ -175,6 +175,8 @@ def simular(cfg, n_workers=4, halo=1, host="127.0.0.1", porta=0, locais=None,
             "tempo_coleta": t_fim - t_fim_sim,
             "tempo_calc_max": max(t_calc),
             "tempo_calc_medio": sum(t_calc) / len(t_calc),
+            "desbalanceamento": max(t_calc) / (sum(t_calc) / len(t_calc)) - 1
+                                if sum(t_calc) > 0 else 0.0,
             "tempo_comm_bordas_medio": sum(m["t_comm"] for m in metricas) / len(metricas),
             "tempo_sinc_medio": sum(m["t_sinc"] for m in metricas) / len(metricas),
             "bytes_bordas": bytes_bordas,

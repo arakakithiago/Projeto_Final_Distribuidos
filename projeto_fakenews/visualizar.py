@@ -90,7 +90,7 @@ def main():
     ap.add_argument("--tamanho", type=int, default=200)
     ap.add_argument("--geracoes", type=int, default=60)
     ap.add_argument("--limiar", type=int, default=2)
-    ap.add_argument("--espalhadores", type=float, default=0.01)
+    ap.add_argument("--espalhadores", type=float, default=0.05)
     ap.add_argument("--foco-inicial", action="store_true")
     ap.add_argument("--escala", type=int, default=3)
     ap.add_argument("--a-cada", type=int, default=1, help="salva 1 quadro a cada N gerações")
@@ -106,7 +106,7 @@ def main():
         st = r.estatisticas()
         print(f"    alcance final {st['alcance_final_%']:.1f}% | pico {st['pico_espalhadores']:,} "
               f"espalhadores na geração {st['geracao_do_pico']}")
-        res.append((f"Modo {m}", r))
+        res.append(({"classico": "Modo clássico", "estendido": "Modo estendido"}[m], r))
     curvas(res, os.path.join(PASTA, "curvas_estados.png"))
 
 

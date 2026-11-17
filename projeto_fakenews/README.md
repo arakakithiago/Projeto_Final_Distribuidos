@@ -79,7 +79,7 @@ do vizinho e a simulação começa. As bordas trafegam direto entre os workers.
 
 ### 4. Experimentos de desempenho, gráficos e visualização
 ```bash
-python benchmark.py            # completo (~30 min); --rapido para um teste de ~1 min
+python benchmark.py            # completo (~10 min nesta máquina); --rapido para um teste de ~1 min
 python graficos.py             # gera resultados/graficos/*.png e resultados/tabelas.md
 python visualizar.py           # GIF da propagação + curvas (resultados/visualizacao/)
 python ambiente.py             # configuração da máquina (resultados/ambiente.json)

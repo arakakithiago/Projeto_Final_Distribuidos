@@ -232,7 +232,8 @@ def simular(cfg, n_workers=4, backend="processos", escalonamento="estatico", blo
 
         for p in procs:
             p.join()
-        grade_final = bytearray(bufs[len(historico) - 1 & 1])   # buffer da última geração
+        # após G gerações executadas, a última escrita foi em buf[G % 2]
+        grade_final = bytearray(bufs[(len(historico) - 1) % 2])
 
         tcalc = [sinc.stats[w * _NCAMPOS + _TCALC] for w in range(n_workers)]
         nblocos = [int(sinc.stats[w * _NCAMPOS + _NBLOCOS]) for w in range(n_workers)]

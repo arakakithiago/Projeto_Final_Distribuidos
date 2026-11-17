@@ -199,13 +199,232 @@ qual alcançou o coordenador, que repassa esse endereço ao vizinho.
 O benchmark também confere *cada* execução contra o sequencial (coluna `correto` do CSV).
 
 ## 7. Configuração experimental
-<!-- AMBIENTE -->
+
+| Item | Valor |
+|---|---|
+| Processador | AMD Ryzen 7 5700X |
+| Núcleos | 8 físicos / 16 lógicos (SMT) |
+| Memória RAM | 16 GB |
+| Sistema operacional | Windows 11 Pro (build 26300) |
+| Linguagem | Python (só a biblioteca padrão na simulação) |
+| Interpretador | CPython 3.15.2, 64 bits, **GIL ativo** |
+| Ambiente de execução | uma máquina; versão distribuída com processos separados comunicando por TCP via loopback (127.0.0.1); processos criados com `spawn` |
+| Metodologia | 3 repetições por ponto, mediana; `time.perf_counter`; 315 execuções no total |
+
+(Valores coletados por `ambiente.py` → `resultados/ambiente.json`.)
+
+**Parâmetros fixos dos experimentos:** modo clássico, limiar = 2, 5% de espalhadores,
+semente 42, `parar_sem_espalhadores=False` (executa exatamente G gerações, para que o
+trabalho seja comparável). n = 8 workers nos experimentos E2–E6.
+
+**Tempos medidos:**
+- `tempo_simulacao`: só o laço de gerações. É a métrica principal do speedup.
+- `tempo_total`: inclui criar processos e conexões, distribuir a grade e coletar o resultado.
 
 ## 8. Resultados
-<!-- RESULTADOS -->
+
+Todas as tabelas completas estão em [resultados/tabelas.md](../resultados/tabelas.md) e os
+gráficos em [resultados/graficos/](../resultados/graficos/). **Nenhuma das 315 execuções
+divergiu do sequencial.**
+
+Definições: speedup S(n) = T_seq / T(n); eficiência E(n) = S(n) / n.
+
+### 8.1 E1 — Escalabilidade (1024×1024, 20 gerações)
+
+![E1](../resultados/graficos/E1_speedup_eficiencia.png)
+
+| n | Processos estático | Processos dinâmico | Threads (GIL) | Distribuído |
+|---:|---:|---:|---:|---:|
+| 1 | 1,00 (100%) | 1,00 (100%) | 0,98 | 0,98 (98%) |
+| 2 | 1,92 (96%) | 1,94 (97%) | 0,90 | 1,87 (94%) |
+| 4 | 3,46 (87%) | 3,48 (87%) | 0,90 | 3,40 (85%) |
+| 6 | 4,75 (79%) | 4,95 (83%) | 0,93 | 4,49 (75%) |
+| 8 | 4,49 (56%) | 5,33 (67%) | 0,93 | 4,47 (56%) |
+| 12 | 5,92 (49%) | 6,13 (51%) | — | 5,82 (48%) |
+| 16 | 5,86 (37%) | **6,72 (42%)** | — | 5,67 (35%) |
+
+Sequencial: 3,12 s. Valores: speedup (eficiência).
+
+**Análise**
+- **Até 4–6 workers o speedup é quase linear** (eficiência de 83–97%). O problema tem
+  pouquíssima comunicação: cada worker troca só 2 linhas por geração.
+- **Threads não aceleram (0,9×):** com o GIL só uma thread executa bytecode por vez, e a
+  troca de GIL entre threads ainda acrescenta custo. É a evidência experimental da escolha por
+  processos.
+- **Acima de 8 workers a curva achata:** a máquina tem 8 núcleos físicos, e de 9 a 16 os
+  processos dividem núcleos via SMT, que rende bem menos que um núcleo real. Além disso, o
+  processo coordenador e o sistema operacional disputam os mesmos núcleos.
+- **Em n = 8 o estático piora e o dinâmico não:** com todos os núcleos ocupados, qualquer
+  interrupção do SO atrasa um worker, e no estático todos esperam por ele na barreira. No
+  dinâmico os outros workers absorvem os blocos restantes (5,33× contra 4,49×).
+- **Distribuído ≈ paralelo:** na mesma máquina a comunicação TCP custa pouco (troca de bordas
+  ≈ 8 ms de 0,7 s). Veja a decomposição abaixo.
+
+![E1 decomposição](../resultados/graficos/E1_distribuido_decomposicao.png)
+
+| n | cálculo (worker mais lento) | troca de bordas | redução global + espera | % não-cálculo |
+|---:|---:|---:|---:|---:|
+| 2 | 1,648 s | 0,008 s | 0,025 s | 2,0% |
+| 4 | 0,871 s | 0,007 s | 0,060 s | 7,1% |
+| 8 | 0,576 s | 0,008 s | 0,143 s | 20,8% |
+| 16 | 0,443 s | 0,028 s | 0,114 s | 24,3% |
+
+O **gargalo não é a transferência de bytes**, e sim a **sincronização**: o tempo de "redução
+global + espera" é o tempo que cada worker passa parado esperando o worker mais lento
+terminar a geração. Ele cresce com n porque há mais processos para atrasar, e é a fração
+que cresce na lei de Amdahl.
+
+**Inicialização:** incluindo a criação dos processos (`spawn` ≈ 0,2–0,4 s), o speedup em 16
+workers cai de 6,7× para ≈3,8× no paralelo. Para simulações curtas, esse custo fixo domina.
+
+### 8.2 E1b — Modo estendido (mais trabalho por célula)
+
+![E1b](../resultados/graficos/E1b_speedup_eficiencia.png)
+
+Sequencial: 6,31 s. Distribuído com 4 workers: **3,87× (97%)**; com 16: **7,09×**.
+A eficiência é maior que no modo clássico porque o modelo estendido faz mais cálculo por
+célula (sorteios com hash), enquanto a comunicação e a sincronização ficam iguais.
+**Aumentar a razão cálculo/comunicação melhora a escalabilidade** (Gustafson, 1988).
+
+### 8.3 E2 — Tamanho da matriz (n = 8)
+
+![E2](../resultados/graficos/E2_tempo_speedup.png)
+
+| Matriz | Sequencial | Paralelo | Distribuído | Speedup par. | Speedup dist. |
+|---:|---:|---:|---:|---:|---:|
+| 256² | 0,206 s | 0,039 s | 0,053 s | 5,22 | 3,88 |
+| 512² | 0,788 s | 0,155 s | 0,175 s | 5,10 | 4,49 |
+| 1024² | 3,112 s | 0,520 s | 0,655 s | 5,98 | 4,75 |
+| 2048² | 12,27 s | 2,307 s | 2,287 s | 5,32 | **5,36** |
+
+O tempo sequencial cresce com N² (área). O speedup **distribuído cresce com o tamanho**:
+o custo por geração de mensagens e barreiras é praticamente fixo, e a borda cresce com N
+enquanto o cálculo cresce com N². É a relação **superfície/volume** da decomposição de
+domínio (Grama et al., 2003). Em 2048² o distribuído empata com a memória compartilhada.
+
+### 8.4 E3 — Número de gerações (1024², n = 8)
+
+![E3](../resultados/graficos/E3_tempo_speedup.png)
+
+O tempo cresce linearmente com as gerações (10 → 80: 1,8 s → 10,2 s sequencial), e o
+**speedup fica constante (~4,8–5,1)**. Isso é esperado: cada geração tem o mesmo trabalho e
+a mesma sincronização, então a razão não muda. O custo de inicialização não entra no
+`tempo_simulacao`; no `tempo_total` ele seria diluído com mais gerações.
+
+### 8.5 E4 — Percentual inicial de espalhadores (1024², 30 gerações, com otimização de frente)
+
+![E4](../resultados/graficos/E4_tempo_speedup.png)
+
+| Espalhadores | Sequencial | Paralelo estático | Paralelo dinâmico | Distribuído |
+|---:|---:|---:|---:|---:|
+| 0,1% | 0,51 s | 2,68× | **3,30×** | 2,45× |
+| 1% | 6,61 s | 5,33× | **5,89×** | 5,31× |
+| 5% | 4,46 s | 5,36× | **6,36×** | 5,15× |
+| 20% | 0,75 s | 5,38× | **5,94×** | 4,40× |
+| 50% | 0,41 s | 5,51× | **6,08×** | 4,22× |
+
+Sem a otimização de frente, o sequencial com 5% leva ≈4,6 s, e esse custo quase não depende
+do percentual.
+- **A otimização de frente** pula as linhas onde nada pode mudar. Com 20–50% de espalhadores
+  a propagação termina em poucas gerações e o sequencial cai de ≈4,6 s para 0,4–0,75 s
+  (até ≈11× menos trabalho). Com 1% a notícia continua se espalhando durante as 30 gerações
+  e quase todas as linhas ficam ativas.
+- **Com pouco trabalho (0,1%) o speedup cai:** o custo fixo de sincronização por geração
+  passa a dominar (lei de Amdahl).
+- **O escalonamento dinâmico vence em todos os casos:** com a otimização, a carga deixa de
+  ser uniforme (algumas faixas têm frente ativa e outras não).
+
+### 8.6 E5 — Custo de comunicação: halo profundo (n = 8, 32 gerações)
+
+![E5](../resultados/graficos/E5_halo.png)
+
+| Matriz | H | Tempo | Speedup | Mensagens de borda | Bytes de borda |
+|---:|---:|---:|---:|---:|---:|
+| 256² | 1 | 0,097 s | 3,06 | 448 | 117.824 |
+| 256² | **4** | **0,074 s** | **3,98** | 112 | 116.144 |
+| 256² | 16 | 0,082 s | 3,60 | 28 | 115.724 |
+| 1024² | 1 | 0,932 s | 4,94 | 448 | 461.888 |
+| 1024² | **4–8** | **0,847 s** | **5,43** | 56–112 | ≈460.000 |
+| 1024² | 16 | 0,854 s | 5,39 | 28 | 459.788 |
+
+- O **volume de bytes é o mesmo**, mas o **nº de mensagens cai H vezes** e o nº de reduções
+  globais também. Por isso o tempo de "sincronização" cai de 0,178 s para 0,042 s (1024²).
+- **Existe um ótimo:** com H grande, o cálculo redundante (barras azuis) cresce ≈H² e anula o
+  ganho. O melhor ficou em H = 4 (+30% de speedup em 256², +10% em 1024²).
+- O ganho é maior na matriz pequena, onde a comunicação pesa mais em relação ao cálculo.
+  Numa rede real, com latência ~100× maior que o loopback, o efeito seria bem maior.
+
+### 8.7 E6 — Balanceamento de carga (espalhadores só no 1/4 superior, otimização de frente, n = 8)
+
+![E6](../resultados/graficos/E6_balanceamento.png)
+
+| Estratégia | Tempo | Speedup | Desbalanceamento (máx/média − 1) |
+|---|---:|---:|---:|
+| Sequencial | 0,403 s | 1,00 | — |
+| Estático | 0,173 s | 2,33 | 98% |
+| **Dinâmico, bloco = 4** | **0,075 s** | **5,38** | **1%** |
+| Dinâmico, bloco = 16 | 0,111 s | 3,63 | 6% |
+| Dinâmico, bloco = 64 | 0,131 s | 3,07 | 27% |
+| Distribuído (estático) | 0,202 s | 1,99 | 94% |
+
+No estático, os workers responsáveis pelo topo fazem quase todo o trabalho e os demais ficam
+ociosos na barreira. O **self-scheduling** com blocos pequenos reparte a carga e **dobra o
+speedup** (2,33× → 5,38×). Blocos grandes demais perdem granularidade. Blocos menores
+custam mais acessos ao contador com lock, mas neste problema esse custo é desprezível.
+A versão distribuída, que tem particionamento fixo, sofre o mesmo desbalanceamento: fica
+registrada como limitação e trabalho futuro (redistribuir faixas entre gerações).
+
+### 8.8 E7 — Sequencial original × refatorado (512², 10 gerações)
+
+![E7](../resultados/graficos/E7_original_vs_refatorado.png)
+
+Original: 1,51 s. Refatorado: 0,49 s (**3,1× mais rápido**, com resultado idêntico).
+Os ganhos vêm do `bytearray` contíguo, da moldura sem testes de limite, da dupla
+bufferização sem `deepcopy` e das transições fixas via `translate`.
+
+### 8.9 Visualização da propagação
+
+`python visualizar.py` gera GIFs animados da grade (cinza = ignorante, vermelho =
+espalhador, azul = inativo, roxo = bot) e as curvas de estados:
+
+![curvas](../resultados/visualizacao/curvas_estados.png)
+
+No modo estendido, influenciadores e bots aumentam o alcance final (57% → 71% neste
+cenário), e a resistência individual deixa "ilhas" de ignorantes.
+
+### 8.10 Gargalos e limitações observadas
+1. **Sincronização por geração** (barreira ou redução global): é o principal custo não-cálculo
+   e cresce com n. Mitigado com halo profundo (menos reduções) e escalonamento dinâmico
+   (menos espera).
+2. **Núcleos físicos:** acima de 8 processos o ganho vem só do SMT.
+3. **Custo de criação de processos no Windows (`spawn`):** relevante em simulações curtas.
+4. **Python interpretado:** cada célula custa ≈150 ns. Em C seria ~100× mais rápido, e aí a
+   comunicação passaria a pesar muito mais na proporção.
+5. **Testes distribuídos numa só máquina (loopback):** em rede real a latência é maior, o que
+   reforça a importância do halo profundo. O suporte a várias máquinas está implementado
+   (seção 5.5).
+6. **Decomposição 1D:** limita n ≤ nº de linhas, e o coordenador guarda a grade inteira no
+   início e no fim. Uma decomposição 2D reduziria a borda para matrizes muito grandes.
+7. **Distribuído com particionamento estático:** não balanceia carga desigual (E6).
 
 ## 9. Melhorias implementadas (resumo)
-<!-- MELHORIAS -->
+
+| # | Melhoria | Categoria | Onde | Evidência |
+|---|---|---|---|---|
+| 1 | Contágio probabilístico (cascata independente) | modelo | `modelo.py` | seção 2.2, 8.9 |
+| 2 | Resistência individual à propagação | modelo | `modelo.py` | seção 2.2 |
+| 3 | Influenciadores digitais (peso maior na vizinhança) | modelo | `modelo.py` | seção 2.2 |
+| 4 | Bots automatizados (espalham para sempre) | modelo | `modelo.py` | seção 2.2 |
+| 5 | RNG por contador: resultado idêntico em qualquer nº de workers | análise probabilística / correção | `modelo.aleatorio_u32` | `verificar.py` |
+| 6 | Grade em bytes com moldura + dupla bufferização | otimização computacional | `modelo.py` | E7: 3,1× |
+| 7 | Otimização de frente (pula regiões inativas) | otimização computacional | `modelo.passo` | E4: até ≈11× |
+| 8 | Balanceamento dinâmico de carga (self-scheduling) | balanceamento | `paralelo.py` | E6: 2,3× → 5,4× |
+| 9 | Halo profundo (*ghost cell expansion*) | redução de comunicação | `worker.py` | E5: +10% a +30% |
+| 10 | Protocolo binário, conexões persistentes, bordas peer-to-peer | redução de comunicação | `protocolo.py` | seção 5.3 |
+| 11 | Execução em várias máquinas | distribuição | `coordenador.py`, `worker_remoto.py` | seção 5.5 |
+| 12 | Visualização gráfica (GIF + curvas) | visualização | `visualizar.py` | seção 8.9 |
+| 13 | Estatísticas adicionais (pico, alcance, novos por geração) e métricas de comunicação | estatísticas | `resultado.py`, `coordenador.py` | seções 8.1, 8.6 |
+| 14 | Verificação automática de equivalência (SHA-256) | qualidade | `verificar.py` | seção 6 |
 
 ## 10. Dificuldades encontradas
 - **GIL:** a primeira abordagem natural (threads) não acelera código Python puro. A solução

@@ -141,14 +141,17 @@ def grafico_escalabilidade(ag, exp, titulo, md):
 
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(13, 5))
     a1.plot([1, nmax], [1, nmax], ls="--", color="#9a9992", lw=1.5, label="Speedup ideal (linear)")
+    rotulados = []   # rótulos seletivos: evita números sobrepostos no fim das linhas
     for v in COR:
         if v not in s:
             continue
         xs = [x for x, _, _ in s[v]]
         sp = [ts / m["tempo_simulacao"] for _, m, _ in s[v]]
         a1.plot(xs, sp, marker=MARCA[v], color=COR[v], label=NOME[v])
-        a1.annotate(f"{sp[-1]:.1f}x", (xs[-1], sp[-1]), textcoords="offset points",
-                    xytext=(6, 0), va="center", fontsize=10, color="#0b0b0b")
+        if all(abs(sp[-1] - y) > 0.5 for y in rotulados):
+            rotulados.append(sp[-1])
+            a1.annotate(f"{sp[-1]:.1f}x", (xs[-1], sp[-1]), textcoords="offset points",
+                        xytext=(6, 0), va="center", fontsize=10, color="#0b0b0b")
         a2.plot(xs, [100 * p / x for p, x in zip(sp, xs)], marker=MARCA[v], color=COR[v],
                 label=NOME[v])
     a1.set(title=f"Speedup — {titulo}", xlabel="Nº de threads / processos", ylabel="Speedup")
@@ -268,12 +271,16 @@ def grafico_halo(ag, md):
                label="Redução global + espera", edgecolor="#fcfcfb", linewidth=2)
         ax.set(title=f"Halo profundo — matriz {c[1]}x{c[1]}", xlabel="Profundidade do halo H",
                ylabel="Tempo (s)")
-        ax.legend(fontsize=9)
         for h, m in pts:
             md.append(f"| {c[1]} | {h} | {m['tempo_simulacao']:.3f} | {ref / m['tempo_simulacao']:.2f} | "
                       f"{m['tempo_comm']:.4f} | {m['tempo_sinc']:.4f} | {int(m['msgs_bordas']):,} | "
                       f"{int(m['bytes_bordas']):,} |")
-    salvar(fig, "E5_halo.png")
+    h, l = axs[0][0].get_legend_handles_labels()
+    fig.legend(h, l, loc="lower center", ncol=3, frameon=False)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.savefig(os.path.join(PASTA_G, "E5_halo.png"), dpi=150)
+    plt.close(fig)
+    print("  gráfico: E5_halo.png")
 
 
 def grafico_balanceamento(ag, md):

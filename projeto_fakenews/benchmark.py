@@ -19,7 +19,7 @@ salvo `tempo_total` (inclui criar processos/conexões e distribuir a grade).
 Cada ponto é repetido REPETICOES vezes; os gráficos usam a mediana.
 
 Uso:
-    python benchmark.py                  # completo (~25-40 min nesta máquina)
+    python benchmark.py                  # completo (~10 min num Ryzen 7 5700X)
     python benchmark.py --rapido         # versão reduzida (~3 min) para testar
     python benchmark.py --so E1 E5       # só alguns experimentos
 Saída: resultados/benchmark.csv  (+ resultados/ambiente.json)

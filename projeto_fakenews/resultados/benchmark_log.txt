@@ -293,3 +293,36 @@ E5: profundidade do halo (distribuído)
   [E5] distribuido                    n=8   h=2   1024² g=32 esp=0.05 class otim=0 ->    0.900s OK
   [E5] distribuido                    n=8   h=2   1024² g=32 esp=0.05 class otim=0 ->    0.881s OK
   [E5] distribuido                    n=8   h=4   1024² g=32 esp=0.05 class otim=0 ->    0.952s OK
+  [E5] distribuido                    n=8   h=4   1024² g=32 esp=0.05 class otim=0 ->    0.849s OK
+  [E5] distribuido                    n=8   h=4   1024² g=32 esp=0.05 class otim=0 ->    0.825s OK
+  [E5] distribuido                    n=8   h=8   1024² g=32 esp=0.05 class otim=0 ->    0.847s OK
+  [E5] distribuido                    n=8   h=8   1024² g=32 esp=0.05 class otim=0 ->    0.997s OK
+  [E5] distribuido                    n=8   h=8   1024² g=32 esp=0.05 class otim=0 ->    0.824s OK
+  [E5] distribuido                    n=8   h=16  1024² g=32 esp=0.05 class otim=0 ->    0.855s OK
+  [E5] distribuido                    n=8   h=16  1024² g=32 esp=0.05 class otim=0 ->    0.854s OK
+  [E5] distribuido                    n=8   h=16  1024² g=32 esp=0.05 class otim=0 ->    0.832s OK
+E6: balanceamento de carga (carga concentrada no topo)
+  [E6] sequencial                     n=1   h=    1024² g=40 esp=0.05 class otim=1 ->    0.430s OK
+  [E6] sequencial                     n=1   h=    1024² g=40 esp=0.05 class otim=1 ->    0.403s OK
+  [E6] sequencial                     n=1   h=    1024² g=40 esp=0.05 class otim=1 ->    0.384s OK
+  [E6] paralelo-processos-estatico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.174s OK
+  [E6] paralelo-processos-estatico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.166s OK
+  [E6] paralelo-processos-estatico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.173s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.075s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.076s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.075s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.105s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.111s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.113s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.129s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.131s OK
+  [E6] paralelo-processos-dinamico    n=8   h=    1024² g=40 esp=0.05 class otim=1 ->    0.138s OK
+  [E6] distribuido                    n=8   h=1   1024² g=40 esp=0.05 class otim=1 ->    0.199s OK
+  [E6] distribuido                    n=8   h=1   1024² g=40 esp=0.05 class otim=1 ->    0.202s OK
+  [E6] distribuido                    n=8   h=1   1024² g=40 esp=0.05 class otim=1 ->    0.214s OK
+E7: código original x refatorado
+  [E7] original 1.568s | refatorado 0.498s
+  [E7] original 1.511s | refatorado 0.482s
+  [E7] original 1.512s | refatorado 0.491s
+
+Concluído em 9.5 min -> D:\Usuarios\Thiago\Desktop\Distribuidos\Trabalho Distribuidos\projeto_fakenews\resultados\benchmark.csv
